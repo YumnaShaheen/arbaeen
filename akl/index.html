@@ -711,7 +711,7 @@ function promptFor(text){
 }
 function itemToRow(it){
   var k=it&&FD[it.key]?it.key:null,g=Math.max(0,+it.grams||0);
-  if(k){var f=FD[k],best=null;for(var u in f.u){var q=g/f.u[u];if(q>=0.5&&q<=30&&Math.abs(q*2-Math.round(q*2))<0.08){best=[Math.round(q*2)/2,u];break}}
+  if(k){var f=FD[k],best=null,CNT=/^(بيضة|بياض بيضة|رغيف|نص رغيف|شريحة|حباية|موزة|تفاحة|صدر|ورك|قرص|علبة|فص|مثلث|صباع|فيليه|قطعة|حفنة|كيس صغير|شقة)$/,SP=/^(oil|ghee|butter|tahini|honey|sugar|jam|paste|mayo|ketchup)$/;for(var u in f.u){if(!CNT.test(u)&&!(SP.test(k)&&/معلقة/.test(u)))continue;var q=g/f.u[u];if(q>=0.5&&q<=30&&Math.abs(q*2-Math.round(q*2))<0.08){best=[Math.round(q*2)/2,u];break}}
     return best?{k:k,n:f.n,q:best[0],u:best[1]}:{k:k,n:f.n,q:Math.round(g),u:"جم"}}
   var p=Array.isArray(it.per100)?it.per100.slice(0,4).map(function(v){return Math.max(0,+v||0)}):[0,0,0,0];while(p.length<4)p.push(0);
   return {k:null,n:String(it.label||"مكوّن").slice(0,60),q:Math.round(g),u:"جم",per:p}
@@ -905,9 +905,9 @@ try{
   const app=initializeApp(window.FB,"ai");
   initializeAppCheck(app,{provider:new ReCaptchaEnterpriseProvider("6LfKORsuAAAAAAcmsh-AvQWuR73-Qgxfl9832FpS"),isTokenAutoRefreshEnabled:true});
   const ai=getAI(app,{backend:new GoogleAIBackend()});
-  const MODELS=["gemini-3.5-flash","gemini-3.5-flash-lite","gemini-flash-latest"];
   window.GEM_JSON=async function(prompt,image){
     let last;
+    const MODELS=image?["gemini-3.5-flash","gemini-3.5-flash-lite","gemini-flash-latest"]:["gemini-3.5-flash-lite","gemini-3.5-flash","gemini-flash-latest"];
     for(const m of MODELS){
       try{
         const model=getGenerativeModel(ai,{model:m,generationConfig:{responseMimeType:"application/json",temperature:0.2}});
