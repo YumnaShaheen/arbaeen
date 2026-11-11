@@ -196,6 +196,10 @@ body.ro .ck,body.ro .water button{pointer-events:none}
 .ms.ok .ic{background:var(--kc)}
 .ms .rwin{margin-top:4px;min-height:40px;padding:6px 10px}
 #fx{position:fixed;inset:0;pointer-events:none;z-index:20}
+.note{display:flex;gap:10px;align-items:center;background:var(--p-soft);border-color:transparent}
+.note>span{font-size:26px}.note>div{flex:1}
+.wrem{display:grid;gap:6px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
+.wrem .btn{min-height:38px;font-size:14px;text-decoration:none;color:var(--ink)}
 .toast{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);border-radius:12px;padding:8px 16px;font-weight:700;z-index:9;max-width:90vw}
 @media (max-width:400px){.dash{grid-template-columns:1fr;justify-items:center}.mac{width:100%}.ir{grid-template-columns:1fr 64px 92px 30px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -434,7 +438,7 @@ function saveLocal(){try{localStorage.setItem(LSK,JSON.stringify(S))}catch(e){}}
 
 /* ---- shared store: Firebase (writer link has k+w, viewer link has k only) ---- */
 var FB={apiKey:"AIzaSyBLPFJAJ7HqJzcp-N1J8A1QSMHSWkBu-FQ",authDomain:"arbaeen-race.firebaseapp.com",projectId:"arbaeen-race",storageBucket:"arbaeen-race.firebasestorage.app",messagingSenderId:"760413586112",appId:"1:760413586112:web:a24e81aa438d803ad66325"};
-var COL=null,ROOM=null,WKEY=null,RO=true,sync="wait",dirty={},ftimer=null,busy={},pend={},needRender=false;
+var NCOL=null,COL=null,ROOM=null,WKEY=null,RO=true,sync="wait",dirty={},ftimer=null,busy={},pend={},needRender=false;
 function prm(n){try{return new URLSearchParams(location.search).get(n)}catch(e){return null}}
 function readKeys(){var ok=/^[A-Za-z0-9_-]{24,64}$/,k=prm("k"),w=prm("w");
   if(k&&ok.test(k)){ROOM=k;WKEY=w&&ok.test(w)?w:null;try{localStorage.setItem(LSK+"k",ROOM);if(WKEY)localStorage.setItem(LSK+"w",WKEY);else localStorage.removeItem(LSK+"w")}catch(e){}}
@@ -456,6 +460,8 @@ async function connect(){
   COL=fs.collection("meals/"+ROOM+"/docs");
   if(!RO){try{var cred=await firebase.auth().signInAnonymously();await fs.doc("meals/"+ROOM+"/members/"+cred.user.uid).set({k:WKEY,t:Date.now()})}catch(e){RO=true;sync="badkey"}}
   var tm=setTimeout(function(){if(sync=="wait"){sync="slow";drawSync()}},10000),first=true;
+  NCOL=fs.collection("meals/"+ROOM+"/notes");
+  NCOL.onSnapshot(function(sn){var o={};sn.docs.forEach(function(d){var x=d.data()||{};if(/^w[1-5]$/.test(d.id)&&typeof x.m=="string")o[d.id]={m:x.m.slice(0,300),t:+x.t||0}});NOTES=o;softRender()},function(){});
   COL.onSnapshot(function(snap){
     if(snap.metadata.hasPendingWrites)return;
     clearTimeout(tm);
@@ -567,7 +573,9 @@ function vToday(){
   var n=cur,d=day(n),e=eaten(n),T=targets(),h="";
   var done5=0;for(var q=0;q<5;q++)if(d.ck[q]||d.sw[q])done5++;
   var cm=done5==5?["🎉",(RO?"كملت":"كملتي")+" اليوم كله! "+(inGoal(n)?"وفي حدود الهدف كمان.":"")]:done5>=3?["💪","فاضل "+ar(5-done5)+(5-done5==1?" وجبة":" وجبات")+" ويبقى يوم كامل"]:done5>0?["🌿",ar(done5)+" من ٥ وجبات، "+(RO?"ماشية":"ماشية")+" حلو"]:["☀️",RO?"لسه ماتعلّمش حاجة النهارده":"يلا نبدأ اليوم، علّمي أول وجبة"];
+  h+=noteBanner();
   h+='<div class="cheer"><span aria-hidden="true">'+cm[0]+'</span><div>'+cm[1]+'</div></div>';
+  h+=noteComposer();
   var left=T.k-e[0];
   h+='<section class="card"><div class="dash">'+ring(Math.round(e[0]),T.k)+'<div class="mac">'+mbar("mP","بروتين",e[1],T.p)+mbar("mC","كارب",e[2],T.c)+mbar("mF","فات",e[3],T.f)+'</div></div>';
   h+='<div class="left"><span>'+(left>=0?'فاضلك <b class="num">'+ar(left)+'</b> سعر':'زدتي <b class="num" style="color:var(--warn)">'+ar(-left)+'</b> سعر عن هدفك')+'</span><span class="mute">'+(n==todayN()?"النهارده":"اليوم "+ar(n))+(n%7==0?" · يوم حر 🎉":"")+'</span></div></section>';
@@ -588,7 +596,9 @@ function vToday(){
   h+='</section>';
   h+='<section class="card"><h3>الميّه <span class="mute num" style="font-weight:500">'+ar(d.w)+' من ١٠ كوبايات</span></h3><div class="water" role="group" aria-label="كوبايات الميّه">';
   for(var w=1;w<=10;w++)h+='<button type="button" class="'+(w<=d.w?"on":"")+'" data-act="water" data-w="'+w+'" aria-label="'+ar(w)+' كوباية" aria-pressed="'+(w<=d.w)+'">💧</button>';
-  h+='</div><p class="mute small" style="margin:6px 0 0">كوباية مع كل وجبة وكل رضعة.</p></section>';
+  h+='</div><p class="mute small" style="margin:6px 0 0">كوباية مع كل وجبة وكل رضعة.</p>';
+  if(!RO){var wl=location.origin+location.pathname+location.search;h+='<div class="wrem"><span class="small"><b>ذكّريني بالميّه</b> (بيتضاف في تقويم الموبايل)</span><div class="row2">'+[[11,"١١ الصبح"],[15,"٣ العصر"],[20,"٨ بالليل"]].map(function(x){return '<a class="btn" target="_blank" rel="noopener" href="'+calLink("💧 اشربي كوباية ميّه",x[0],0,30,"وعلّميها في الصفحة: "+wl)+'">'+x[1]+'</a>'}).join("")+'</div></div>'}
+  h+='</section>';
   h+='<p class="mute small">الطفل ياخد حصته قبل الملح والتوابل والشطة، ومقطّعة صغيرة. الزوج بيزوّد المقلي والشطة في طبقه بس. الفرن أو الإير فراير بزيت رش بدل القلي.</p>';
   return h;
 }
@@ -601,6 +611,7 @@ function vLog(){
   h+='<option value="x"'+(LG.slot=="x"?" selected":"")+'>أكلة زيادة</option></select></label>';
   if(DICT&&!micGone)h+='<button type="button" class="mic'+(micState!="idle"?" live":"")+'" id="mic" data-act="mic">'+MIC+'<span>'+(micState=="idle"?"اتكلمي وقولي أكلتي إيه":micState=="starting"?"بفتح الميكروفون…":micState=="finishing"?"بكمّل آخر كلام…":"خلصت؟ دوسي هنا")+'</span></button><div class="partial" id="partial" aria-live="polite">'+esc(partial)+'</div>';
   h+='<label class="f" for="lt">'+(DICT&&!micGone?"أو اكتبي":"اكتبي")+' اللي أكلتيه أو مقادير الطبخة<textarea class="in" id="lt" data-f="text" placeholder="مثلا: عملت مكرونة بالفراخ للبيت كله: نص كيلو مكرونة، نص كيلو صدور فراخ، ٢ معلقة زيت، ٣ طماطم وبصلة. الحلة ٤ أطباق وأنا أكلت طبق."></textarea></label>';
+  if(SAMPLE)h+='<label class="btn" style="justify-content:center;min-height:52px;cursor:pointer">📷 صوّري الأكلة وأنا أحسبها<input type="file" accept="image/*" capture="environment" id="photo" hidden></label>'+(PHOTO?'<img src="'+PHOTO+'" alt="صورة الأكلة" style="max-width:100%;border-radius:14px;max-height:220px;object-fit:cover">':'');
   h+='<div class="row2"><button type="button" class="btn pri" data-act="parse"'+(busyAI?" disabled":"")+'>'+(busyAI?"بحسب…":"احسبيها")+'</button>'+(busyAI?'<button type="button" class="btn" data-act="stopai">وقّفي</button>':"")+'<span class="status'+(LG.err?" err":"")+'" id="lstat" aria-live="polite">'+esc(LG.status)+'</span></div></section>';
 
   h+='<section class="card"><div class="top"><h2 style="margin:0">المكونات</h2><span class="mute small">'+ar(LG.rows.length)+' مكوّن</span></div><div id="rows">';
@@ -734,6 +745,49 @@ async function analyze(){
   render();
 }
 
+/* ---- Gemini adapter (photo + smarter parsing) ---- */
+function setupGem(){if(!window.GEM_JSON||SAMPLE)return;SAMPLE={json:function(p,o){var img=o&&o.image,sig=o&&o.signal;
+  var run=window.GEM_JSON(p,img).catch(function(e){var m=String(e&&e.message||e);throw {code:/429|quota|RESOURCE_EXHAUSTED/i.test(m)?"rate_limited":"upstream_error"}});
+  if(!sig)return run;return Promise.race([run,new Promise(function(_,rej){sig.addEventListener("abort",function(){rej({code:"cancelled"})})})])}};if(tab=="log")render()}
+window.addEventListener("gem-ready",setupGem);
+function dbLines(){return FKEYS.map(function(k){var f=FD[k],u=[];for(var x in f.u)u.push(x+"="+f.u[x]);return k+"|"+f.n+(u.length?"|"+u.join(","):"")}).join("\n")}
+function photoPrompt(){return "You look at a photo of food someone in Egypt is about to eat, so a page can compute exact macros.\n\nFood database (key|Arabic name|household unit weights in grams):\n"+dbLines()+
+  "\n\nIdentify every food visible on the plate or in the bowl, and estimate the grams of each that ONE person is eating here. Include likely cooking oil or ghee as its own item when the food is fried or cooked in fat (estimate conservatively). "+
+  "Reply with ONLY a JSON object like {\"name\":\"فطار فول وبيض\",\"servings\":1,\"eaten\":1,\"items\":[{\"key\":\"fool\",\"label\":\"فول\",\"grams\":150},{\"key\":null,\"label\":\"صوص طحينة\",\"grams\":30,\"per100\":[300,8,10,26]}]}. "+
+  "Use cooked keys for cooked foods (ricec, pastac, chickc) when they exist. key must be a database key or null; when null give realistic per100 = [kcal, protein g, carbs g, fat g]. name = short Arabic meal name. If the photo shows no food, reply {\"items\":[]}.";}
+function applyAI(o,src){var items=o&&Array.isArray(o.items)?o.items:[];if(!items.length)return false;
+  LG.rows=items.slice(0,40).map(itemToRow).filter(function(r){return r.q>0});if(!LG.rows.length)return false;
+  LG.serv=+o.servings>0?Math.round(+o.servings*100)/100:1;LG.ate=+o.eaten>0?Math.round(+o.eaten*100)/100:1;
+  if(!LG.name&&o.name)LG.name=String(o.name).slice(0,80);
+  var est=LG.rows.filter(function(r){return !r.k}).length;
+  LG.status=(src=="photo"?"دي تقديرات من الصورة: ":"لقيت ")+ar(LG.rows.length)+" مكوّن"+(est?"، منهم "+ar(est)+" بقيم تقديرية":"")+". راجعي الكميات وعدّلي لو محتاجة، وبعدين سجّلي.";LG.err=false;return true}
+function shrink(file){return new Promise(function(res,rej){var img=new Image(),url=URL.createObjectURL(file);img.onload=function(){var m=1024,w=img.naturalWidth,h=img.naturalHeight,s=Math.min(1,m/Math.max(w,h)),c=document.createElement("canvas");c.width=Math.round(w*s);c.height=Math.round(h*s);c.getContext("2d").drawImage(img,0,0,c.width,c.height);URL.revokeObjectURL(url);var d=c.toDataURL("image/jpeg",0.82);res({data:d.split(",")[1],mime:"image/jpeg",url:d})};img.onerror=function(){URL.revokeObjectURL(url);rej()};img.src=url})}
+var PHOTO=null;
+async function analyzePhoto(file){
+  if(!SAMPLE){LG.status="تصوير الأكل مش متاح دلوقتي، اكتبي أو قولي المكونات.";LG.err=true;render();return}
+  var ctl=new AbortController();busyAI=ctl;LG.status="بشوف الصورة وبحسب…";LG.err=false;
+  try{var im=await shrink(file);PHOTO=im.url;render();
+    var o=await SAMPLE.json(photoPrompt(),{image:im,signal:ctl.signal});
+    if(!applyAI(o,"photo")){LG.status="مالقيتش أكل واضح في الصورة. جربي صورة أقرب وفيها نور.";LG.err=true}}
+  catch(e){if(e&&e.code=="cancelled"){LG.status=""}else{LG.status=e&&e.code=="rate_limited"?"استني دقيقة وجربي تاني.":"الصورة ماتحسبتش، جربي تاني أو اكتبي المكونات.";LG.err=true}}
+  busyAI=null;render()}
+
+/* ---- water reminders (calendar) ---- */
+function calLink(title,hh,mm,count,details){var n=new Date(),d=new Date(n.getFullYear(),n.getMonth(),n.getDate(),hh,mm);if(d<n)d.setDate(d.getDate()+1);
+  function f(x){return x.getFullYear()+pad(x.getMonth()+1)+pad(x.getDate())+"T"+pad(x.getHours())+pad(x.getMinutes())+"00"}
+  var e=new Date(d.getTime()+5*60000);
+  return "https://calendar.google.com/calendar/render?action=TEMPLATE&text="+encodeURIComponent(title)+"&dates="+f(d)+"/"+f(e)+"&ctz=Africa/Cairo&recur="+encodeURIComponent("RRULE:FREQ=DAILY;COUNT="+count)+"&details="+encodeURIComponent(details||"")}
+
+/* ---- weekly message from the viewer link ---- */
+var NOTES={};
+function weekN(){return Math.ceil(todayN()/7)}
+function noteBanner(){var w=weekN(),n=NOTES["w"+w];if(!n||!n.m)return "";
+  if(RO)return '<div class="card note"><span aria-hidden="true">💌</span><div><b>رسالتك الأسبوع ده:</b> '+esc(n.m)+'</div></div>';
+  var seen=0;try{seen=+localStorage.getItem(LSK+"note"+w)||0}catch(e){}if(seen>=n.t)return "";
+  return '<div class="card note"><span aria-hidden="true">💌</span><div><b>رسالة ليكي:</b> '+esc(n.m)+'</div><button type="button" class="btn ghost" data-act="noteok">تمام 🤍</button></div>'}
+function noteComposer(){if(!RO)return "";var w=weekN(),n=NOTES["w"+w];
+  return '<section class="card" style="display:grid;gap:8px"><h3>💌 رسالة الأسبوع لـ '+esc(S.cfg.name||"صاحبتك")+'</h3><p class="mute small" style="margin:0">بتظهرلها أول ما تفتح الصفحة. كلمة تشجيع بسيطة بتفرق.</p><textarea class="in" id="notein" maxlength="300" placeholder="مثلا: فخورة بيكي جدًا، الأسبوع ده كنتي ثابتة ما شاء الله">'+esc(n&&n.m||"")+'</textarea><div><button type="button" class="btn pri" data-act="sendnote">'+(n&&n.m?"عدّلي الرسالة":"ابعتي")+'</button></div></section>'}
+
 /* ================= actions ================= */
 function toast(t,ms){var el=document.getElementById("toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){el.hidden=true},ms||2200)}
 function openLog(slot,entry,edit){LG=newDraft(slot);if(entry){var e=clone(entry);LG.name=e.name;LG.rows=e.rows;LG.serv=e.serv;LG.ate=e.ate;LG.id=edit?e.id:null}LG.edit=edit||null;tab="log";render();window.scrollTo(0,0)}
@@ -748,7 +802,9 @@ document.addEventListener("click",function(ev){
   var b=ev.target.closest("[data-act],[data-tab]");if(!b)return;
   if(b.hasAttribute("data-tab")){tab=b.getAttribute("data-tab");render();window.scrollTo(0,0);return}
   var a=b.getAttribute("data-act"),d=day(cur),k=+b.getAttribute("data-k"),i=+b.getAttribute("data-i");
-  if(RO&&a!="day")return;
+  if(RO&&a!="day"&&a!="sendnote")return;
+  if(a=="sendnote"){var tv=document.getElementById("notein").value.trim().slice(0,300);if(!tv||!NCOL)return;document.getElementById("notein").blur();NCOL.doc("w"+weekN()).set({m:tv,t:Date.now()}).then(function(){toast("وصلت الرسالة 💌")},function(){toast("الرسالة مااتبعتتش، جربي تاني")});return}
+  if(a=="noteok"){try{localStorage.setItem(LSK+"note"+weekN(),String(Date.now()))}catch(e){}render();return}
   if(a=="day"){cur=+b.getAttribute("data-n");render();return}
   if(a=="ck"){var wasFull=fullDay(cur),turnedOn=false;if(d.sw[k]){delete d.sw[k];d.ck[k]=0}else{d.ck[k]=d.ck[k]?0:1;turnedOn=!!d.ck[k]}save(["d"+cur]);
     if(!wasFull&&fullDay(cur)){toast("🎉 يوم كامل! +"+ar(30)+" نقطة",3000);confetti()}else if(turnedOn)toast(CHEER[Math.floor(Math.random()*CHEER.length)]+" · +١٠");render();return}
@@ -793,7 +849,7 @@ document.addEventListener("input",function(ev){
   if(f=="serv"||f=="ate"){var v3=num(t.value);if(v3!=null&&v3>0){LG[f]=v3;drawLogTotals()}return}
 });
 document.addEventListener("change",function(ev){
-  var t=ev.target;if(t.getAttribute&&t.getAttribute("data-rw")&&!RO){if(!S.cfg.rw||typeof S.cfg.rw!="object")S.cfg.rw={};S.cfg.rw[t.getAttribute("data-rw")]=t.value.trim().slice(0,80);save(["state"]);toast("اتحفظت المكافأة");return}
+  var t=ev.target;if(t.id=="photo"&&t.files&&t.files[0]){analyzePhoto(t.files[0]);return}if(t.getAttribute&&t.getAttribute("data-rw")&&!RO){if(!S.cfg.rw||typeof S.cfg.rw!="object")S.cfg.rw={};S.cfg.rw[t.getAttribute("data-rw")]=t.value.trim().slice(0,80);save(["state"]);toast("اتحفظت المكافأة");return}
   var f=t.getAttribute&&t.getAttribute("data-f");if(!f)return;var i=+t.getAttribute("data-i");
   if(f=="u"&&LG.rows[i]){LG.rows[i].u=t.value;refreshRowsKcal();return}
   if(f=="slot"){LG.slot=t.value;return}
@@ -840,6 +896,29 @@ if(DICT){
 loadLocal();
 if(!S.cfg.start){S.cfg.start=iso(new Date());saveLocal()}
 readKeys();cur=todayN();render();connect();
+</script>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
+import {initializeAppCheck,ReCaptchaEnterpriseProvider} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app-check.js";
+import {getAI,getGenerativeModel,GoogleAIBackend} from "https://www.gstatic.com/firebasejs/12.6.0/firebase-ai.js";
+try{
+  const app=initializeApp(window.FB,"ai");
+  initializeAppCheck(app,{provider:new ReCaptchaEnterpriseProvider("6LfKORsuAAAAAAcmsh-AvQWuR73-Qgxfl9832FpS"),isTokenAutoRefreshEnabled:true});
+  const ai=getAI(app,{backend:new GoogleAIBackend()});
+  const MODELS=["gemini-2.5-flash","gemini-2.5-flash-lite"];
+  window.GEM_JSON=async function(prompt,image){
+    let last;
+    for(const m of MODELS){
+      try{
+        const model=getGenerativeModel(ai,{model:m,generationConfig:{responseMimeType:"application/json",temperature:0.2}});
+        const parts=[prompt];if(image)parts.push({inlineData:{data:image.data,mimeType:image.mime}});
+        const r=await model.generateContent(parts);return JSON.parse(r.response.text());
+      }catch(e){last=e;if(/App Check|401|403|PERMISSION/i.test(String(e&&e.message||e)))break}
+    }
+    throw last;
+  };
+  window.dispatchEvent(new Event("gem-ready"));
+}catch(e){console.warn("AI unavailable",e)}
 </script>
 </body>
 </html>
