@@ -200,6 +200,11 @@ body.ro .ck,body.ro .water button{pointer-events:none}
 .note>span{font-size:26px}.note>div{flex:1}
 .wrem{display:grid;gap:6px;margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)}
 .wrem .btn{min-height:38px;font-size:14px;text-decoration:none;color:var(--ink)}
+.fr{display:grid;gap:8px;margin:0 12px 12px;padding:12px;border-radius:14px;background:var(--bg);border:1px dashed var(--line)}
+.fr .btn{min-height:40px;font-size:14px}
+.frres{display:grid;gap:6px;background:var(--card);border-radius:12px;padding:10px 12px;border:1px solid var(--line)}
+ul.sl{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:6px}
+ul.sl li{display:flex;gap:8px;align-items:flex-start;font-size:15px;line-height:1.6}
 .toast{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);border-radius:12px;padding:8px 16px;font-weight:700;z-index:9;max-width:90vw}
 @media (max-width:400px){.dash{grid-template-columns:1fr;justify-items:center}.mac{width:100%}.ir{grid-template-columns:1fr 64px 92px 30px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -452,6 +457,7 @@ function write(k){if(busy[k]){pend[k]=1;return}busy[k]=1;
   function(e){busy[k]=0;delete pend[k];sync=e&&e.code=="permission-denied"?"badkey":"bad";drawSync()})}
 function applyDoc(id,x){
   if(id=="state"){if(x.cfg&&typeof x.cfg=="object")S.cfg=Object.assign({w:90,t:2500,g:1800,start:null,name:""},x.cfg);var rw={};if(x.cfg.rw&&typeof x.cfg.rw=="object")for(var rk in x.cfg.rw)if(MSP.indexOf(+rk)>-1)rw[rk]=String(x.cfg.rw[rk]||"").slice(0,80);S.cfg.rw=rw;if(Array.isArray(x.rec))S.rec=x.rec.map(cleanEntry).filter(Boolean);if(Array.isArray(x.wt))S.wt=x.wt.filter(function(w){return w&&/^\d{4}-\d{2}-\d{2}$/.test(w.d)&&+w.kg>0})}
+  else if(id=="sum"){SUM=cleanSum(x)}
   else{var m=/^d(\d{1,2})$/.exec(id);if(m&&+m[1]>=1&&+m[1]<=30)S.days[m[1]]=cleanDay(x)}}
 async function connect(){
   readKeys();
@@ -467,7 +473,7 @@ async function connect(){
     clearTimeout(tm);
     if(first&&snap.empty&&!RO&&!snap.metadata.fromCache){var ks=["state"];Object.keys(S.days).forEach(function(n){if(hasData(n))ks.push("d"+n)});if(!S.cfg.start)S.cfg.start=iso(new Date());save(ks)}
     else snap.docs.forEach(function(doc){if(!RO&&(dirty[doc.id]||busy[doc.id]))return;applyDoc(doc.id,doc.data()||{})});
-    if(!snap.metadata.fromCache){LOADED=true;if(sync!="badkey")sync="ok"}
+    if(!snap.metadata.fromCache){var wasL=LOADED;LOADED=true;if(sync!="badkey")sync="ok";if(!wasL)setTimeout(autoSummary,4000)}
     if(first)cur=todayN();first=false;saveLocal();softRender();
   },function(e){clearTimeout(tm);sync=e&&e.code=="permission-denied"?"badkey":"bad";drawSync()});
   render();
@@ -588,7 +594,7 @@ function vToday(){
     h+='<article class="meal'+(on?" done":"")+'"><div class="mh"><button type="button" class="ck'+(on?" on":"")+'" data-act="ck" data-k="'+k+'" aria-pressed="'+on+'" aria-label="أكلت '+esc(N[k])+'">'+(on?"✓":"")+'</button><div class="em" aria-hidden="true">'+(sw?"✏️":x[0])+'</div><div class="mt"><div class="lb">'+N[k]+(sw?' <span class="tag sw">بدّلتيها</span>':"")+'</div><div class="tt">'+esc(sw?sw.name:x[1])+'</div></div><div class="kc num">'+ar(m[0])+' <small>سعر</small></div></div>';
     h+='<div class="mm">'+pills(m)+'</div>';
     if(!sw){h+='<details class="rcp"><summary>المقادير والطريقة</summary><div class="rb"><div class="pt">'+x[2]+'</div><ol>'+String(x[3]).split("|").map(function(t){return "<li>"+t+"</li>"}).join("")+'</ol>'+nt(x,k)+'</div></details>'}
-    h+='<div class="ma">'+(sw?'<button type="button" class="btn" data-act="editsw" data-k="'+k+'">عدّلي</button><button type="button" class="btn ghost" data-act="unsw" data-k="'+k+'">رجّعي وجبة الخطة</button>':'<button type="button" class="btn" data-act="swap" data-k="'+k+'">أكلت حاجة تانية</button>')+'</div></article>';
+    h+='<div class="ma">'+(sw?'<button type="button" class="btn" data-act="editsw" data-k="'+k+'">عدّلي</button><button type="button" class="btn ghost" data-act="unsw" data-k="'+k+'">رجّعي وجبة الخطة</button>':'<button type="button" class="btn" data-act="swap" data-k="'+k+'">أكلت حاجة تانية</button>'+(SAMPLE?'<button type="button" class="btn" data-act="fridge" data-k="'+k+'">🧊 اقترحي من اللي عندي</button>':''))+'</div>'+(sw?'':frCard(k))+'</article>';
   });
   h+='<section class="card"><div class="top"><h2 style="margin:0">أكلات زيادة</h2><button type="button" class="btn" data-act="addx">ضيفي أكلة</button></div>';
   if(!d.ex.length)h+='<p class="mute small" style="margin:8px 0 0">'+(RO?"مفيش أكلات زيادة في اليوم ده.":"لو أكلتي حاجة برة الخطة، سجّليها هنا عشان الحساب يبقى مظبوط.")+'</p>';
@@ -656,7 +662,7 @@ function vRec(){
 }
 
 function vProg(){
-  var T=targets(),h='',days=[],sum=0,cnt=0,full=0;
+  var T=targets(),h=sumCard(),days=[],sum=0,cnt=0,full=0;
   for(var n=1;n<=30;n++){var on=hasData(n),k=on?eaten(n)[0]:0;days.push([n,k,on]);if(on){sum+=k;cnt++}if(fullDay(n))full++}
   var avg=cnt?sum/cnt:0,def=cnt?S.cfg.t-avg:S.cfg.t-T.k,wk=def*7/7700,lost=cnt?days.reduce(function(a,x){return a+(x[2]?S.cfg.t-x[1]:0)},0)/7700:0;
   h+='<section class="card"><h2 style="margin:0 0 8px">ملخص الشهر</h2><div class="stat"><div><span class="mute small">أيام سجّلتي فيها</span><b class="num">'+ar(cnt)+' من ٣٠</b></div><div><span class="mute small">متوسط أكلك</span><b class="num">'+ar(avg)+' سعر</b></div><div><span class="mute small">'+(cnt?"النزول المتوقع":"لو التزمتي بهدفك")+'</span><b class="num">'+ar(wk,2)+' كجم/أسبوع</b></div><div><span class="mute small">نزلتي تقريبًا</span><b class="num">'+ar(lost,2)+' كجم</b></div></div>';
@@ -746,7 +752,7 @@ async function analyze(){
 }
 
 /* ---- Gemini adapter (photo + smarter parsing) ---- */
-function setupGem(){if(!window.GEM_JSON||SAMPLE)return;SAMPLE={json:function(p,o){var img=o&&o.image,sig=o&&o.signal;
+function setupGem(){if(!window.GEM_JSON||SAMPLE)return;setTimeout(autoSummary,4000);SAMPLE={json:function(p,o){var img=o&&o.image,sig=o&&o.signal;
   var run=window.GEM_JSON(p,img).catch(function(e){var m=String(e&&e.message||e);throw {code:/429|quota|RESOURCE_EXHAUSTED/i.test(m)?"rate_limited":"upstream_error"}});
   if(!sig)return run;return Promise.race([run,new Promise(function(_,rej){sig.addEventListener("abort",function(){rej({code:"cancelled"})})})])}};if(tab=="log")render()}
 window.addEventListener("gem-ready",setupGem);
@@ -788,9 +794,79 @@ function noteBanner(){var w=weekN(),n=NOTES["w"+w];if(!n||!n.m)return "";
 function noteComposer(){if(!RO)return "";var w=weekN(),n=NOTES["w"+w];
   return '<section class="card" style="display:grid;gap:8px"><h3>💌 رسالة الأسبوع لـ '+esc(S.cfg.name||"صاحبتك")+'</h3><p class="mute small" style="margin:0">بتظهرلها أول ما تفتح الصفحة. كلمة تشجيع بسيطة بتفرق.</p><textarea class="in" id="notein" maxlength="300" placeholder="مثلا: فخورة بيكي جدًا، الأسبوع ده كنتي ثابتة ما شاء الله">'+esc(n&&n.m||"")+'</textarea><div><button type="button" class="btn pri" data-act="sendnote">'+(n&&n.m?"عدّلي الرسالة":"ابعتي")+'</button></div></section>'}
 
+/* ---- fridge: suggest a meal from what she has ---- */
+var FR=null; /* {k, text, photo, busy, err, res} */
+var AVOID="فاصوليا بيضا، لوبيا، تونة، عدس، بانكيك، سبانخ";
+function fridgePrompt(k,text){var n=cur,m=planM(n,k),pm=meals(n)[k];
+  return "You suggest ONE simple Egyptian home meal from what a mother already has at home, to replace a planned meal in her diet.\n\nMeal slot: "+N[k]+". Planned meal: "+pm[1]+" ("+m[0]+" kcal, protein "+m[1]+" g, carbs "+m[2]+" g, fat "+m[3]+" g).\n"+
+  "Target for HER portion: about "+m[0]+" kcal (stay within 10%), protein at least "+Math.max(15,Math.round(m[1]*0.9))+" g if possible.\n"+
+  "What she has (may also be shown in the photo): \""+String(text||"").slice(0,800)+"\"\n"+
+  "Prefer oven or air fryer over frying, ready in 30 minutes or less, cheap everyday ingredients. Do not use: "+AVOID+". Basic pantry items (oil, salt, spices, onion, garlic, tomato paste) can be assumed.\n\n"+
+  "Food database (key|Arabic name|unit weights in grams):\n"+dbLines()+
+  "\n\nReply with ONLY JSON: {\"name\":\"اسم الأكلة بالعربي\",\"why\":\"جملة قصيرة بالعامية المصرية ليه دي مناسبة\",\"items\":[{\"key\":\"egg\",\"label\":\"بيض\",\"grams\":110},{\"key\":null,\"label\":\"...\",\"grams\":30,\"per100\":[kcal,p,c,f]}],\"steps\":[\"خطوة قصيرة بالعامية المصرية\", \"...\"]}. "+
+  "items are HER portion only, in raw grams unless the key is a cooked one. Use database keys whenever possible. 3 to 6 steps. If nothing usable, reply {\"items\":[]}.";}
+function frOpen(k){FR={k:k,text:"",photo:null,busy:false,err:"",res:null};render();var el=document.getElementById("fr"+k);if(el)el.scrollIntoView({block:"center"})}
+async function frRun(file){
+  if(!FR||FR.busy)return;if(!SAMPLE){FR.err="الاقتراحات مش متاحة دلوقتي، جربي كمان شوية.";render();return}
+  if(!FR.text.trim()&&!file){FR.err="اكتبي أو قولي عندك إيه، أو صوّري التلاجة.";render();return}
+  FR.busy=true;FR.err="";FR.res=null;render();
+  try{var img=null;if(file){img=await shrink(file);FR.photo=img.url;render()}
+    var o=await SAMPLE.json(fridgePrompt(FR.k,FR.text)+(img?"\nA photo of her fridge or kitchen is attached: use only foods you can see or she listed.":""),img?{image:img}:{});
+    var items=o&&Array.isArray(o.items)?o.items:[];var rows=items.slice(0,12).map(itemToRow).filter(function(r){return r.q>0});
+    if(!rows.length)FR.err="مالقيتش أكلة مناسبة من الموجود. جربي تكتبي حاجات أكتر.";
+    else FR.res={name:String(o.name||"أكلة من اللي عندك").slice(0,60),why:String(o.why||"").slice(0,160),steps:(Array.isArray(o.steps)?o.steps:[]).slice(0,8).map(function(x){return String(x).slice(0,160)}),rows:rows};
+  }catch(e){FR.err=e&&e.code=="rate_limited"?"استني دقيقة وجربي تاني.":"ماقدرتش أقترح دلوقتي، جربي تاني."}
+  FR.busy=false;render()}
+function frCard(k){if(!FR||FR.k!==k)return "";var h='<div class="fr" id="fr'+k+'"><b>عندك إيه في البيت؟</b><span class="hint">اكتبي أو قولي الموجود، أو صوّري التلاجة، وأنا أقترح أكلة بنفس سعرات '+N[k]+' ('+ar(planM(cur,k)[0])+' سعر).</span>';
+  h+='<textarea class="in" id="frt" data-f="frt" placeholder="مثلا: بيض، بطاطس، جبنة رومي، طماطم، عيش توست">'+esc(FR.text)+'</textarea>';
+  h+='<div class="row2">'+(DICT&&!micGone?'<button type="button" class="btn" data-act="frmic">'+(micState!="idle"&&micTarget=="fr"?"⏹ خلصت":"🎤 قوليها")+'</button>':"")+'<label class="btn" style="cursor:pointer">📷 صوّري التلاجة<input type="file" accept="image/*" capture="environment" id="frphoto" hidden></label><button type="button" class="btn pri" data-act="frgo"'+(FR.busy?" disabled":"")+'>'+(FR.busy?"بفكر…":"اقترحي")+'</button><button type="button" class="btn ghost" data-act="frx">إلغاء</button></div>';
+  if(FR.photo)h+='<img src="'+FR.photo+'" alt="صورة التلاجة" style="max-width:100%;max-height:180px;object-fit:cover;border-radius:12px">';
+  if(FR.err)h+='<span class="status err">'+esc(FR.err)+'</span>';
+  if(FR.res){var c=calcEntry({rows:FR.res.rows,serv:1,ate:1}).m;
+    h+='<div class="frres"><div class="top"><b style="font-size:17px">'+esc(FR.res.name)+'</b><span class="kc num">'+ar(c[0])+' <small>سعر</small></span></div>'+(FR.res.why?'<span class="hint">'+esc(FR.res.why)+'</span>':'')+'<div class="mm" style="padding:6px 0">'+pills(c)+'</div>';
+    h+='<div class="small"><b>المقادير لنصيبك:</b> '+FR.res.rows.map(function(r){return esc(r.k?FD[r.k].n:r.n)+" "+ar(r.q,1)+" "+esc(r.u)}).join("، ")+'</div>';
+    if(FR.res.steps.length)h+='<ol style="margin:6px 0;padding-inline-start:22px;font-size:14.5px">'+FR.res.steps.map(function(x){return "<li>"+esc(x)+"</li>"}).join("")+'</ol>';
+    h+='<div class="row2"><button type="button" class="btn pri" data-act="fruse">هعملها، سجّليها بدل الوجبة</button><button type="button" class="btn" data-act="frgo">اقترحي غيرها</button></div></div>'}
+  return h+'</div>'}
+
+/* ---- weekly summary ---- */
+var SUM=null,sumBusy=false;
+function cleanSum(x){if(!x||typeof x!="object")return null;var o={d:String(x.d||"").slice(0,10),headline:String(x.headline||"").slice(0,140),wins:[],tips:[],focus:String(x.focus||"").slice(0,200),st:{}};
+  ["wins","tips"].forEach(function(k){if(Array.isArray(x[k]))o[k]=x[k].slice(0,3).map(function(v){return String(v).slice(0,200)})});
+  if(x.st&&typeof x.st=="object")["days","kcal","p","goal","over","water"].forEach(function(k){o.st[k]=Math.round(+x.st[k]||0)});return o.headline?o:null}
+function weekStats(){var t=todayN(),T=targets(),days=[],slots=[0,0,0,0,0],sw=[0,0,0,0,0],ex={},n,i;
+  for(i=0;i<7;i++){n=t-i;if(n<1)break;if(!hasData(n))continue;var d=day(n),e=eaten(n);days.push({day:n,kcal:Math.round(e[0]),p:Math.round(e[1]),c:Math.round(e[2]),f:Math.round(e[3]),full:fullDay(n),water:d.w});
+    for(var k=0;k<5;k++){if(d.sw[k]){sw[k]++;slots[k]+=d.sw[k].m[0]-planM(n,k)[0]}}
+    d.ex.forEach(function(x){ex[x.name]=(ex[x.name]||0)+Math.round(x.m[0])})}
+  var avg=function(f){return days.length?Math.round(days.reduce(function(a,x){return a+x[f]},0)/days.length):0};
+  return {goal_kcal:T.k,protein_target:T.p,carb_target:Math.round(T.c),fat_target:Math.round(T.f),days_logged:days.length,avg_kcal:avg("kcal"),avg_protein:avg("p"),avg_carbs:avg("c"),avg_fat:avg("f"),
+    days_over_goal:days.filter(function(x){return x.kcal>T.k+100}).length,full_days:days.filter(function(x){return x.full}).length,avg_water_cups:avg("water"),
+    swapped_meals:N.map(function(nm,k){return sw[k]?nm+": "+sw[k]+" مرات، فرق السعرات عن الخطة "+Math.round(slots[k])+"":""}).filter(Boolean),
+    extras_kcal:Object.keys(ex).sort(function(a,b){return ex[b]-ex[a]}).slice(0,5).map(function(k){return k+": "+ex[k]+" سعر"}),days:days}}
+async function makeSummary(auto){
+  if(RO||sumBusy||!SAMPLE)return;var st=weekStats();if(st.days_logged<2){if(!auto)toast("محتاجة يومين متسجّلين على الأقل");return}
+  sumBusy=true;if(tab=="prog")render();
+  try{var o=await SAMPLE.json("You write a short, warm weekly food summary in Egyptian Arabic for a mother following a calorie plan (she is breastfeeding, so never push very low calories). Here are her last 7 days as JSON:\n"+JSON.stringify(st)+
+    "\n\nReply with ONLY JSON: {\"headline\":\"جملة واحدة تلخّص الأسبوع\",\"wins\":[\"حاجة حلوة عملتها\",\"...\"],\"tips\":[\"ملاحظة محددة من الأرقام مع اقتراح عملي\",\"...\"],\"focus\":\"هدف واحد بسيط للأسبوع الجاي\"}. "+
+    "2 wins and 2 tips, each one short sentence, specific to the numbers (e.g. protein low at breakfast, extras that added the most calories, water). Friendly, no guilt, no medical claims.");
+    var sm=cleanSum(Object.assign({},o,{d:iso(new Date()),st:{days:st.days_logged,kcal:st.avg_kcal,p:st.avg_protein,goal:S.cfg.g,over:st.days_over_goal,water:st.avg_water_cups}}));
+    if(sm){SUM=sm;COL.doc("sum").set(sm).catch(function(){});if(!auto)toast("ملخص الأسبوع جاهز ✨");else toast("✨ ملخص الأسبوع جاهز، شوفيه في التقدم",3500)}}
+  catch(e){if(!auto)toast("الملخص ماتعملش، جربي تاني")}
+  sumBusy=false;render()}
+function sumCard(){var h='<section class="card sum"><div class="top"><h2 style="margin:0">ملخص الأسبوع</h2>'+(SUM?'<span class="mute small">'+esc(SUM.d)+'</span>':'')+'</div>';
+  if(!SUM)h+='<p class="mute small" style="margin:6px 0 0">'+(RO?"الملخص بيتعمل كل جمعة أول ما "+esc(S.cfg.name||"صاحبتك")+" تفتح الصفحة.":"بيتعمل لوحده كل جمعة، أو اعمليه دلوقتي.")+'</p>';
+  else{h+='<p style="font-weight:700;font-size:16.5px;margin:8px 0">'+esc(SUM.headline)+'</p><div class="stat"><div><span class="mute small">أيام متسجّلة</span><b class="num">'+ar(SUM.st.days)+' من ٧</b></div><div><span class="mute small">متوسط السعرات</span><b class="num">'+ar(SUM.st.kcal)+'</b></div><div><span class="mute small">متوسط البروتين</span><b class="num">'+ar(SUM.st.p)+' جم</b></div><div><span class="mute small">الميّه في اليوم</span><b class="num">'+ar(SUM.st.water)+' كوبايات</b></div></div>';
+    if(SUM.wins.length)h+='<ul class="sl">'+SUM.wins.map(function(w){return '<li><span aria-hidden="true">✅</span>'+esc(w)+'</li>'}).join("")+'</ul>';
+    if(SUM.tips.length)h+='<ul class="sl">'+SUM.tips.map(function(w){return '<li><span aria-hidden="true">💡</span>'+esc(w)+'</li>'}).join("")+'</ul>';
+    if(SUM.focus)h+='<div class="cheer" style="margin-top:8px"><span aria-hidden="true">🎯</span><div><b>هدف الأسبوع الجاي:</b> '+esc(SUM.focus)+'</div></div>'}
+  if(!RO&&SAMPLE)h+='<div style="margin-top:10px"><button type="button" class="btn" data-act="mksum"'+(sumBusy?" disabled":"")+'>'+(sumBusy?"بكتب الملخص…":(SUM?"حدّثي الملخص":"اعملي ملخص دلوقتي"))+'</button></div>';
+  return h+'</section>'}
+function autoSummary(){if(RO||!SAMPLE||!LOADED)return;var now=new Date();if(now.getDay()!=5)return;if(SUM&&SUM.d==iso(now))return;var k=LSK+"sumtry"+iso(now);try{if(localStorage.getItem(k))return;localStorage.setItem(k,"1")}catch(e){}makeSummary(true)}
+
 /* ================= actions ================= */
 function toast(t,ms){var el=document.getElementById("toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){el.hidden=true},ms||2200)}
 function openLog(slot,entry,edit){LG=newDraft(slot);if(entry){var e=clone(entry);LG.name=e.name;LG.rows=e.rows;LG.serv=e.serv;LG.ate=e.ate;LG.id=edit?e.id:null}LG.edit=edit||null;tab="log";render();window.scrollTo(0,0)}
+var micTarget="log";
 function startMic(){
   if(!DICT)return;
   if(DICT.active()){DICT.stop();return}
@@ -804,6 +880,12 @@ document.addEventListener("click",function(ev){
   var a=b.getAttribute("data-act"),d=day(cur),k=+b.getAttribute("data-k"),i=+b.getAttribute("data-i");
   if(RO&&a!="day"&&a!="sendnote")return;
   if(a=="sendnote"){var tv=document.getElementById("notein").value.trim().slice(0,300);if(!tv||!NCOL)return;document.getElementById("notein").blur();NCOL.doc("w"+weekN()).set({m:tv,t:Date.now()}).then(function(){toast("وصلت الرسالة 💌")},function(){toast("الرسالة مااتبعتتش، جربي تاني")});return}
+  if(a=="fridge"){frOpen(k);return}
+  if(a=="frx"){FR=null;if(micTarget=="fr"&&DICT&&DICT.active())DICT.stop();render();return}
+  if(a=="frgo"){frRun(null);return}
+  if(a=="frmic"){micTarget="fr";startMic();return}
+  if(a=="fruse"){if(FR&&FR.res){var fk=FR.k,fres=FR.res;FR=null;openLog(fk,{name:fres.name,rows:fres.rows,serv:1,ate:1},null);LG.status="راجعي الكميات بعد ما تطبخي، وسجّلي.";render()}return}
+  if(a=="mksum"){makeSummary(false);return}
   if(a=="noteok"){try{localStorage.setItem(LSK+"note"+weekN(),String(Date.now()))}catch(e){}render();return}
   if(a=="day"){cur=+b.getAttribute("data-n");render();return}
   if(a=="ck"){var wasFull=fullDay(cur),turnedOn=false;if(d.sw[k]){delete d.sw[k];d.ck[k]=0}else{d.ck[k]=d.ck[k]?0:1;turnedOn=!!d.ck[k]}save(["d"+cur]);
@@ -815,7 +897,7 @@ document.addEventListener("click",function(ev){
   if(a=="addx"){openLog("x");return}
   if(a=="editx"){openLog("x",d.ex[i],{ex:i});return}
   if(a=="delx"){d.ex.splice(i,1);save(["d"+cur]);render();toast("اتمسحت");return}
-  if(a=="mic"){startMic();return}
+  if(a=="mic"){micTarget="log";startMic();return}
   if(a=="parse"){lastParsed=LG.text;analyze();return}
   if(a=="stopai"){if(busyAI)busyAI.abort();return}
   if(a=="delrow"){LG.rows.splice(i,1);render();return}
@@ -839,17 +921,18 @@ document.addEventListener("click",function(ev){
   if(a=="savecfg"){var w2=num(document.getElementById("cw").value),t2=num(document.getElementById("ct").value),g2=num(document.getElementById("cg").value),s2=document.getElementById("cs").value;
     if(w2>0)S.cfg.w=w2;if(t2>800)S.cfg.t=t2;if(g2>800)S.cfg.g=g2;if(/^\d{4}-\d{2}-\d{2}$/.test(s2))S.cfg.start=s2;S.cfg.name=document.getElementById("cn").value.trim().slice(0,20);save(["state"]);cur=todayN();render();toast("اتحفظت");return}
 });
-document.getElementById("fab").addEventListener("click",function(){if(RO)return;LG=newDraft("x");tab="log";render();startMic()});
+document.getElementById("fab").addEventListener("click",function(){if(RO)return;micTarget="log";LG=newDraft("x");tab="log";render();startMic()});
 document.addEventListener("input",function(ev){
   var t=ev.target,f=t.getAttribute&&t.getAttribute("data-f");if(!f)return;var i=+t.getAttribute("data-i");
   if(f=="text"){LG.text=t.value;return}
+  if(f=="frt"){if(FR)FR.text=t.value;return}
   if(f=="name"){LG.name=t.value;return}
   if(f=="q"){var v=num(t.value);if(v!=null&&v>=0&&LG.rows[i]){LG.rows[i].q=v;refreshRowsKcal()}return}
   if(/^per[0-3]$/.test(f)){var v2=num(t.value);if(v2!=null&&v2>=0&&LG.rows[i]){LG.rows[i].per[+f[3]]=v2;refreshRowsKcal()}return}
   if(f=="serv"||f=="ate"){var v3=num(t.value);if(v3!=null&&v3>0){LG[f]=v3;drawLogTotals()}return}
 });
 document.addEventListener("change",function(ev){
-  var t=ev.target;if(t.id=="photo"&&t.files&&t.files[0]){analyzePhoto(t.files[0]);return}if(t.getAttribute&&t.getAttribute("data-rw")&&!RO){if(!S.cfg.rw||typeof S.cfg.rw!="object")S.cfg.rw={};S.cfg.rw[t.getAttribute("data-rw")]=t.value.trim().slice(0,80);save(["state"]);toast("اتحفظت المكافأة");return}
+  var t=ev.target;if(t.id=="photo"&&t.files&&t.files[0]){analyzePhoto(t.files[0]);return}if(t.id=="frphoto"&&t.files&&t.files[0]){frRun(t.files[0]);return}if(t.getAttribute&&t.getAttribute("data-rw")&&!RO){if(!S.cfg.rw||typeof S.cfg.rw!="object")S.cfg.rw={};S.cfg.rw[t.getAttribute("data-rw")]=t.value.trim().slice(0,80);save(["state"]);toast("اتحفظت المكافأة");return}
   var f=t.getAttribute&&t.getAttribute("data-f");if(!f)return;var i=+t.getAttribute("data-i");
   if(f=="u"&&LG.rows[i]){LG.rows[i].u=t.value;refreshRowsKcal();return}
   if(f=="slot"){LG.slot=t.value;return}
@@ -881,8 +964,9 @@ function makeDict(){
 DICT=makeDict();
 if(DICT){
   DICT.onPartial(function(e){partial=e.text||"";var p=document.getElementById("partial");if(p)p.textContent=partial});
-  DICT.onFinal(function(e){var piece=e.text||"";LG.text=LG.text?LG.text+piece:piece.replace(/^\s+/,"");var ta=document.getElementById("lt");if(ta)ta.value=LG.text;partial="";var p=document.getElementById("partial");if(p)p.textContent=""});
+  DICT.onFinal(function(e){var piece=e.text||"";if(micTarget=="fr"&&FR){FR.text=FR.text?FR.text+piece:piece.replace(/^\s+/,"");var ft=document.getElementById("frt");if(ft)ft.value=FR.text;return}LG.text=LG.text?LG.text+piece:piece.replace(/^\s+/,"");var ta=document.getElementById("lt");if(ta)ta.value=LG.text;partial="";var p=document.getElementById("partial");if(p)p.textContent=""});
   DICT.onState(function(e){micState=e.state;
+    if(e.state=="idle"&&micTarget=="fr"){micTarget="log";partial="";render();return}
     if(e.state=="idle"){partial="";
       if(e.reason=="not_granted"){LG.status="كروم مش سامح بالميكروفون. افتحي إعدادات الموقع (القفل جنب الرابط) واسمحي بالميكروفون.";LG.err=true}
       else if(e.reason=="network"){LG.status="التسجيل بالصوت محتاج نت.";LG.err=true}
