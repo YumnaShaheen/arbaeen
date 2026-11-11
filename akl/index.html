@@ -481,7 +481,7 @@ function vToday(){
   h+='<section class="card"><div class="dash">'+ring(Math.round(e[0]),T.k)+'<div class="mac">'+mbar("mP","بروتين",e[1],T.p)+mbar("mC","كارب",e[2],T.c)+mbar("mF","فات",e[3],T.f)+'</div></div>';
   h+='<div class="left"><span>'+(left>=0?'فاضلك <b class="num">'+ar(left)+'</b> سعر':'زدتي <b class="num" style="color:var(--warn)">'+ar(-left)+'</b> سعر عن هدفك')+'</span><span class="mute">'+(n==todayN()?"النهارده":"اليوم "+ar(n))+(n%7==0?" · يوم حر 🎉":"")+'</span></div></section>';
   h+='<div class="strip" id="strip" role="group" aria-label="أيام الشهر">';var tn=todayN();
-  for(var i=1;i<=30;i++)h+='<button type="button" class="d num'+(hasData(i)?" has":"")+(fullDay(i)?" full":"")+(i==tn?" now":"")+(i==n?" sel":"")+'" data-act="day" data-n="'+i+'"'+(i==n?' aria-current="true"':"")+'>'+ar(i)+'<small>'+(i==tn?"النهارده":"أ"+ar(Math.ceil(i/7)))+'</small></button>';
+  for(var i=1;i<=30;i++)h+='<button type="button" class="d num'+(hasData(i)?" has":"")+(fullDay(i)?" full":"")+(i==tn?" now":"")+(i==n?" sel":"")+'" data-act="day" data-n="'+i+'"'+(i==n?' aria-current="true"':"")+'>'+ar(i)+(i==tn?'<small>النهارده</small>':(i%7==0?'<small>حر</small>':''))+'</button>';
   h+='</div><h2>وجبات اليوم '+ar(n)+'</h2>';
   var ms=meals(n);
   ms.forEach(function(x,k){
