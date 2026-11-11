@@ -905,7 +905,7 @@ try{
   const app=initializeApp(window.FB,"ai");
   initializeAppCheck(app,{provider:new ReCaptchaEnterpriseProvider("6LfKORsuAAAAAAcmsh-AvQWuR73-Qgxfl9832FpS"),isTokenAutoRefreshEnabled:true});
   const ai=getAI(app,{backend:new GoogleAIBackend()});
-  const MODELS=["gemini-2.5-flash","gemini-2.5-flash-lite"];
+  const MODELS=["gemini-3.5-flash","gemini-3.5-flash-lite","gemini-flash-latest"];
   window.GEM_JSON=async function(prompt,image){
     let last;
     for(const m of MODELS){
