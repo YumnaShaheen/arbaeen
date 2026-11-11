@@ -847,7 +847,7 @@ async function makeSummary(auto){
   if(RO||sumBusy||!SAMPLE)return;var st=weekStats();if(st.days_logged<2){if(!auto)toast("محتاجة يومين متسجّلين على الأقل");return}
   sumBusy=true;if(tab=="prog")render();
   try{var o=await SAMPLE.json("You write a short, warm weekly food summary in Egyptian Arabic for a mother following a calorie plan (she is breastfeeding, so never push very low calories). Here are her last 7 days as JSON:\n"+JSON.stringify(st)+
-    "\n\nReply with ONLY JSON: {\"headline\":\"جملة واحدة تلخّص الأسبوع\",\"wins\":[\"حاجة حلوة عملتها\",\"...\"],\"tips\":[\"ملاحظة محددة من الأرقام مع اقتراح عملي\",\"...\"],\"focus\":\"هدف واحد بسيط للأسبوع الجاي\"}. "+
+    "\n\n"+(S.cfg.name?"Her name is "+S.cfg.name+". ":"Do not use any name for her. ")+"Write in natural Egyptian Arabic, simple words. The focus is ONE small goal for next week.\n\nReply with ONLY JSON: {\"headline\":\"جملة واحدة تلخّص الأسبوع\",\"wins\":[\"حاجة حلوة عملتها\",\"...\"],\"tips\":[\"ملاحظة محددة من الأرقام مع اقتراح عملي\",\"...\"],\"focus\":\"هدف واحد بسيط للأسبوع الجاي\"}. "+
     "2 wins and 2 tips, each one short sentence, specific to the numbers (e.g. protein low at breakfast, extras that added the most calories, water). Friendly, no guilt, no medical claims.");
     var sm=cleanSum(Object.assign({},o,{d:iso(new Date()),st:{days:st.days_logged,kcal:st.avg_kcal,p:st.avg_protein,goal:S.cfg.g,over:st.days_over_goal,water:st.avg_water_cups}}));
     if(sm){SUM=sm;COL.doc("sum").set(sm).catch(function(){});if(!auto)toast("ملخص الأسبوع جاهز ✨");else toast("✨ ملخص الأسبوع جاهز، شوفيه في التقدم",3500)}}
